@@ -1,2 +1,225 @@
 # Ridhz
-file:///C:/Users/USer/OneDrive/Desktop/web%20tes/index.html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Custom QR Code Generator with Actions</title>
+  <!-- Pustaka QRCode.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 420px;
+      margin: 40px auto;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .color-picker {
+      display: flex;
+      gap: 15px;
+    }
+    .color-item {
+      flex: 1;
+    }
+    .color-item input[type="color"] {
+      width: 100%;
+      height: 40px;
+      border: none;
+      cursor: pointer;
+    }
+    #qrcode-box {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      min-height: 200px;
+      align-items: center;
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 15px;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+      transition: opacity 0.2s;
+    }
+    .btn:disabled {
+      background-color: #ccc !important;
+      cursor: not-allowed;
+    }
+    .btn:hover:not(:disabled) {
+      opacity: 0.9;
+    }
+    .btn-download { background-color: #28a745; }
+    .btn-copy { background-color: #007bff; }
+    .btn-share { background-color: #17a2b8; }
+  </style>
+</head>
+<body>
+
+  <h2>Custom QR Code Generator</h2>
+
+  <div class="form-group">
+    <label for="text-input">Teks atau URL:</label>
+    <input type="text" id="text-input" placeholder="Masukkan link atau teks...">
+  </div>
+
+  <div class="form-group color-picker">
+    <div class="color-item">
+      <label for="color-dark">Warna QR:</label>
+      <input type="color" id="color-dark" value="#000000">
+    </div>
+    <div class="color-item">
+      <label for="color-light">Warna Background:</label>
+      <input type="color" id="color-light" value="#ffffff">
+    </div>
+  </div>
+
+  <div id="qrcode-box">
+    <div id="qrcode"></div>
+  </div>
+
+  <div class="action-buttons">
+    <button id="btn-download" class="btn btn-download" disabled>Download</button>
+    <button id="btn-copy" class="btn btn-copy" disabled>Copy</button>
+    <button id="btn-share" class="btn btn-share" disabled>Share</button>
+  </div>
+
+  <script>
+    const textInput = document.getElementById('text-input');
+    const colorDarkInput = document.getElementById('color-dark');
+    const colorLightInput = document.getElementById('color-light');
+    const qrContainer = document.getElementById('qrcode');
+    
+    const btnDownload = document.getElementById('btn-download');
+    const btnCopy = document.getElementById('btn-copy');
+    const btnShare = document.getElementById('btn-share');
+
+    let qrcode = null;
+
+    function generateQRCode() {
+      const text = textInput.value.trim();
+      qrContainer.innerHTML = '';
+
+      if (text !== '') {
+        qrcode = new QRCode(qrContainer, {
+          text: text,
+          width: 200,
+          height: 200,
+          colorDark: colorDarkInput.value,
+          colorLight: colorLightInput.value,
+          correctLevel: QRCode.CorrectLevel.H
+        });
+
+        // Aktifkan tombol jika ada isi
+        toggleButtons(false);
+      } else {
+        toggleButtons(true);
+      }
+    }
+
+    function toggleButtons(disabled) {
+      btnDownload.disabled = disabled;
+      btnCopy.disabled = disabled;
+      btnShare.disabled = disabled;
+    }
+
+    // Fungsi Pembantu: Mengambil elemen Canvas atau Image dari QRCode.js
+    function getQRImageSrc() {
+      const img = qrContainer.querySelector('img');
+      const canvas = qrContainer.querySelector('canvas');
+      
+      if (img && img.src) {
+        return img.src;
+      } else if (canvas) {
+        return canvas.toDataURL('image/png');
+      }
+      return null;
+    }
+
+    // 1. Fungsi DOWNLOAD
+    btnDownload.addEventListener('click', () => {
+      const imgSrc = getQRImageSrc();
+      if (!imgSrc) return;
+
+      const link = document.createElement('a');
+      link.href = imgSrc;
+      link.download = 'qrcode.png';
+      link.click();
+    });
+
+    // 2. Fungsi COPY IMAGE KE CLIPBOARD
+    btnCopy.addEventListener('click', async () => {
+      const imgSrc = getQRImageSrc();
+      if (!imgSrc) return;
+
+      try {
+        const response = await fetch(imgSrc);
+        const blob = await response.blob();
+        await navigator.clipboard.write([
+          new ClipboardItem({ [blob.type]: blob })
+        ]);
+        alert('Gambar QR Code berhasil disalin ke clipboard!');
+      } catch (err) {
+        alert('Gagal menyalin gambar. Pastikan browser mendukung Clipboard API.');
+      }
+    });
+
+    // 3. Fungsi SHARE (Web Share API)
+    btnShare.addEventListener('click', async () => {
+      const imgSrc = getQRImageSrc();
+      if (!imgSrc) return;
+
+      try {
+        const response = await fetch(imgSrc);
+        const blob = await response.blob();
+        const file = new File([blob], 'qrcode.png', { type: 'image/png' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'QR Code',
+            text: 'Ini QR Code yang dibuat:',
+            files: [file]
+          });
+        } else {
+          alert('Fitur Share tidak didukung di browser ini.');
+        }
+      } catch (err) {
+        console.log('Share dibatalkan atau gagal:', err);
+      }
+    });
+
+    // Event Listener untuk perbarui QR Code secara real-time
+    textInput.addEventListener('input', generateQRCode);
+    colorDarkInput.addEventListener('input', generateQRCode);
+    colorLightInput.addEventListener('input', generateQRCode);
+  </script>
+
+</body>
+</html>
